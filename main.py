@@ -7,7 +7,7 @@ import re
 """
 
 # 注册插件
-@register(name="RemoveTags", description="移除消息中的所有<think>、<details>和<summary>标签及其内容", version="0.5", author="the-lazy-me")
+@register(name="RemoveThink", description="移除消息中的所有<think>、<details>和<summary>标签及其内容", version="0.5", author="the-lazy-me")
 class RemoveTagsPlugin(BasePlugin):
 
     # 插件加载时触发
