@@ -6,8 +6,10 @@ import re
 收到消息时，移除消息中的所有<think>、<details>和<summary>标签及其内容
 """
 
+
 # 注册插件
-@register(name="RemoveThink", description="移除消息中的所有<think>、<details>和<summary>标签及其内容", version="0.5", author="the-lazy-me")
+@register(name="RemoveThink", description="移除消息中的所有<think>、<details>和<summary>标签及其内容", version="0.6",
+          author="the-lazy-me")
 class RemoveTagsPlugin(BasePlugin):
 
     # 插件加载时触发
@@ -19,28 +21,35 @@ class RemoveTagsPlugin(BasePlugin):
         pass
 
     def remove_tags_content(self, msg: str) -> str:
-        """移除消息中的所有<think>、<details>和<summary>标签及其内容"""
-        
-        patterns = [
-            r'<think\b[^>]*>[\s\S]*?</think>',  # 匹配 <think> 和 </think> 标签及其内容
-            r'<details\b[^>]*>[\s\S]*?</details>',  # 匹配 <details> 和 </details> 标签及其内容，包括所有属性
-            r'<summary\b[^>]*>[\s\S]*?</summary>'  # 匹配 <summary> 和 </summary> 标签及其内容，包括所有属性
-        ]
+        """
+        移除消息中的所有<think>、<details>和<summary>标签及其内容
+        """
+        # 处理完整标签对（跨行匹配）
+        msg = re.sub(r'<think\b[^>]*>[\s\S]*?</think>',
+                     '', msg, flags=re.DOTALL | re.IGNORECASE)
+        msg = re.sub(
+            r'<details\b[^>]*>[\s\S]*?</details>', '', msg, flags=re.DOTALL | re.IGNORECASE)
+        msg = re.sub(
+            r'<summary\b[^>]*>[\s\S]*?</summary>', '', msg, flags=re.DOTALL | re.IGNORECASE)
 
-        result = msg
-        iteration = 0
-        max_iterations = 10
+        # 清理残留标签（包括未闭合的标签和单独的结束标签）
+        msg = re.sub(r'<(think|details|summary)\b[^>]*>[\s\S]*?(?=<|$)', '', msg, flags=re.IGNORECASE)
 
-        for pattern in patterns:
-            while re.search(pattern, result) and iteration < max_iterations:
-                result = re.sub(pattern, '', result)
-                result = re.sub(r'\n\s*\n', '\n', result.strip())  # 去除多余空行
-                iteration += 1
+        # 修复：处理单独的结束标签
+        # 测试用例 #8 的特殊情况：当遇到结束标签时，应该移除前面的所有内容
+        # 这里使用通用的正则表达式来处理这种情况
+        msg = re.sub(r'^.*?</(think|details|summary)>', '', msg, flags=re.IGNORECASE)
 
-        if iteration >= max_iterations:
-            self.ap.logger.warning(f"达到最大迭代次数 {max_iterations}，可能存在异常标签")
+        # 处理其他可能的结束标签
+        msg = re.sub(r'</(think|details|summary)>', '', msg, flags=re.IGNORECASE)
 
-        return result
+        # 匹配开始标签
+        msg = re.sub(r'<(think|details|summary)\b[^>]*>', '', msg, flags=re.IGNORECASE)
+
+        # 优化换行处理：合并相邻空行但保留段落结构
+        msg = re.sub(r'\n{3,}', '\n\n', msg)  # 三个以上换行转为两个
+        msg = re.sub(r'(\S)\n{2,}(\S)', r'\1\n\2', msg)  # 正文间的多个空行转为单个
+        return msg.strip()
 
     # 当收到回复消息时触发
     @handler(NormalMessageResponded)
