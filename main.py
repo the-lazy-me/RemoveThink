@@ -3,12 +3,11 @@ from pkg.plugin.events import *  # 导入事件类
 import re
 
 """
-收到消息时，移除消息中的所有<think>、<details>和<summary>标签及其内容
+收到消息时，移除消息中的所有<think>、<details>、<summary>和<thinking>标签及其内容
 """
 
-
 # 注册插件
-@register(name="RemoveThink", description="移除消息中的所有<think>、<details>和<summary>标签及其内容", version="0.6",
+@register(name="RemoveThink", description="移除消息中的所有<think>、<details>、<summary>和<thinking>标签及其内容", version="0.6",
           author="the-lazy-me")
 class RemoveTagsPlugin(BasePlugin):
 
@@ -22,7 +21,7 @@ class RemoveTagsPlugin(BasePlugin):
 
     def remove_tags_content(self, msg: str) -> str:
         """
-        移除消息中的所有<think>、<details>和<summary>标签及其内容
+        移除消息中的所有<think>、<details>、<summary>和<thinking>标签及其内容
         """
         # 处理完整标签对（跨行匹配）
         msg = re.sub(r'<think\b[^>]*>[\s\S]*?</think>',
@@ -31,20 +30,22 @@ class RemoveTagsPlugin(BasePlugin):
             r'<details\b[^>]*>[\s\S]*?</details>', '', msg, flags=re.DOTALL | re.IGNORECASE)
         msg = re.sub(
             r'<summary\b[^>]*>[\s\S]*?</summary>', '', msg, flags=re.DOTALL | re.IGNORECASE)
+        msg = re.sub(
+            r'<thinking\b[^>]*>[\s\S]*?</thinking>', '', msg, flags=re.DOTALL | re.IGNORECASE)
 
         # 清理残留标签（包括未闭合的标签和单独的结束标签）
-        msg = re.sub(r'<(think|details|summary)\b[^>]*>[\s\S]*?(?=<|$)', '', msg, flags=re.IGNORECASE)
+        msg = re.sub(r'<(think|details|summary|thinking)\b[^>]*>[\s\S]*?(?=<|$)', '', msg, flags=re.IGNORECASE)
 
         # 修复：处理单独的结束标签
         # 测试用例 #8 的特殊情况：当遇到结束标签时，应该移除前面的所有内容
         # 这里使用通用的正则表达式来处理这种情况
-        msg = re.sub(r'^.*?</(think|details|summary)>', '', msg, flags=re.IGNORECASE)
+        msg = re.sub(r'^.*?</(think|details|summary|thinking)>', '', msg, flags=re.IGNORECASE)
 
         # 处理其他可能的结束标签
-        msg = re.sub(r'</(think|details|summary)>', '', msg, flags=re.IGNORECASE)
+        msg = re.sub(r'</(think|details|summary|thinking)>', '', msg, flags=re.IGNORECASE)
 
         # 匹配开始标签
-        msg = re.sub(r'<(think|details|summary)\b[^>]*>', '', msg, flags=re.IGNORECASE)
+        msg = re.sub(r'<(think|details|summary|thinking)\b[^>]*>', '', msg, flags=re.IGNORECASE)
 
         # 优化换行处理：合并相邻空行但保留段落结构
         msg = re.sub(r'\n{3,}', '\n\n', msg)  # 三个以上换行转为两个
@@ -55,7 +56,7 @@ class RemoveTagsPlugin(BasePlugin):
     @handler(NormalMessageResponded)
     async def normal_message_responded(self, ctx: EventContext):
         msg = ctx.event.response_text
-        if any(tag in msg for tag in ["<think>", "<details>", "<summary>"]):
+        if any(tag in msg for tag in ["<think>", "<details>", "<summary>", "<thinking>"]):
             processed_msg = self.remove_tags_content(msg)
             if processed_msg:
                 ctx.add_return("reply", [processed_msg])
